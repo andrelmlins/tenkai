@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import {
   Grid,
   Row,
@@ -16,6 +17,9 @@ import EnvironmentCard from "components/Card/EnvironmentCard.jsx";
 import axios from "axios";
 import TENKAI_API_URL from "env.js";
 
+import * as environmentActions from "stores/environment/actions";
+import * as environmentSelectors from "stores/environment/reducer";
+
 class Environments extends Component {
   state = {
     showInsertUpdateForm: false,
@@ -28,45 +32,7 @@ class Environments extends Component {
   };
 
   componentDidMount() {
-    this.getEnvironmentList();
-  }
-
-  handleConfirmDeleteModalClose() {
-    this.setState({ showConfirmDeleteModal: false, itemToDelete: {} });
-  }
-
-  handleConfirmDeleteModalShow() {
-    this.setState({ showConfirmDeleteModal: true });
-  }
-
-  handleConfirmDuplicateModalClose() {
-    this.setState({ showConfirmDuplicateModal: false, itemToDuplicate: {} });
-  }
-
-  handleConfirmDuplicateModalShow() {
-    this.setState({ showConfirmDuplicateModal: true }, () => {
-      console.log("showing modal");
-    });
-  }
-
-  onChangeFilterHandler(e) {
-    this.setState({
-      inputFilter: e.target.value
-    });
-  }
-
-  getEnvironmentList() {
-    axios
-      .get(TENKAI_API_URL + "/environments")
-      .then(response => this.setState({ envResult: response.data }))
-      .catch(error => {
-        console.log(error);
-        if (error.response !== undefined) {
-          this.props.handleNotification("custom", "error", error.response.data);
-        } else {
-          this.props.handleNotification("deployment_fail", "error");
-        }
-      });
+    this.props.dispatch(environmentActions.allEnvironments());
   }
 
   navigateToEnvironmentVariables(id, group, name) {
@@ -78,119 +44,50 @@ class Environments extends Component {
   }
 
   navigateToEditEnvironment(item) {
-    console.log("navigateToEditEnvironment");
-    this.setState(() => ({
+    this.setState({
       showInsertUpdateForm: true,
       editItem: item,
       editMode: true
-    }));
+    });
     window.scrollTo(0, 0);
   }
 
-  handleNewEnvironmentClick(e) {
-    this.setState(() => ({
-      showInsertUpdateForm: true,
-      editItem: {},
-      editMode: false
-    }));
-  }
-
-  handleCancelEnvironmentClick(e) {
-    this.setState(() => ({
-      showInsertUpdateForm: false,
-      editItem: {},
-      editMode: false
-    }));
-  }
-
-  onSaveClick(data) {
+  async onSaveClick(data) {
+    this.props.handleLoading(true);
     if (this.state.editMode) {
-      console.log("edit");
-      this.save(data, "/environments/edit");
+      await this.props.dispatch(environmentActions.editEnvironment(data));
     } else {
-      console.log("new");
-      this.save(data, "/environments");
+      await this.props.dispatch(environmentActions.createEnvironment(data));
     }
-  }
 
-  duplicateEnvironment(item) {
-    this.setState({ itemToDuplicate: item }, () => {
-      console.log(this.state.itemToDuplicate);
-      this.handleConfirmDuplicateModalShow();
-    });
-  }
-
-  handleConfirmDuplicate() {
-    this.props.handleLoading(true);
-    if (this.state.itemToDuplicate !== undefined) {
-      axios
-        .get(
-          TENKAI_API_URL +
-            "/environments/duplicate/" +
-            this.state.itemToDuplicate.ID
-        )
-        .then(res => {
-          this.props.handleLoading(false);
-          this.props.handleNotification("custom", "success", "Duplicated");
-          this.getEnvironmentList();
-        })
-        .catch(error => {
-          this.props.handleLoading(false);
-          this.props.handleNotification("general_fail", "error");
-        });
-    }
-    this.setState({ showConfirmDuplicateModal: false, itemToDuplicate: {} });
-  }
-
-  save(data, uri) {
-    this.props.handleLoading(true);
-    axios
-      .post(TENKAI_API_URL + uri, { data })
-      .then(res => {
-        this.setState({
-          envResult: { Envs: [...this.state.envResult.Envs, data] }
-        });
-        this.props.handleLoading(false);
-        this.props.handleNotification("custom", "success", "Saved");
-        this.getEnvironmentList();
-      })
-      .catch(error => {
-        console.log(error.message);
-        this.props.handleLoading(false);
-        this.props.handleNotification("general_fail", "error");
-      });
-    this.setState(() => ({
+    this.props.handleLoading(false);
+    this.setState({
       showInsertUpdateForm: false,
       editItem: {},
       editMode: false
-    }));
-  }
-
-  onDelete(item) {
-    this.setState({ itemToDelete: item }, () => {
-      this.handleConfirmDeleteModalShow();
     });
   }
 
-  handleConfirmDelete() {
+  async duplicateEnvironment(item) {
     this.props.handleLoading(true);
-    if (this.state.itemToDelete !== undefined) {
-      axios
-        .delete(
-          TENKAI_API_URL + "/environments/delete/" + this.state.itemToDelete.ID
-        )
-        .then(res => {
-          this.props.handleLoading(false);
-          this.props.handleNotification("custom", "success", "Deleted");
-          this.getEnvironmentList();
-        })
-        .catch(error => {
-          console.log(error.message);
-          this.props.handleLoading(false);
-          this.props.handleNotification("general_fail", "error");
-        });
+    if (item !== undefined) {
+      await this.props.dispatch(
+        environmentActions.duplicateEnvironment(item.ID)
+      );
+
+      this.props.handleLoading(false);
+      this.setState({ showConfirmDuplicateModal: false });
     }
-    this.setState({ showConfirmDeleteModal: false, itemToDelete: {} });
+  }
+
+  async onDelete(item) {
+    this.props.handleLoading(true);
+    if (item !== undefined) {
+      await this.props.dispatch(environmentActions.deleteEnvironment(item.ID));
+
+      this.props.handleLoading(false);
+      this.setState({ showConfirmDeleteModal: false });
+    }
   }
 
   onExport(item) {
@@ -244,9 +141,9 @@ class Environments extends Component {
       <div className="content">
         <SimpleModal
           showConfirmDeleteModal={this.state.showConfirmDeleteModal}
-          handleConfirmDeleteModalClose={this.handleConfirmDeleteModalClose.bind(
-            this
-          )}
+          handleConfirmDeleteModalClose={() =>
+            this.setState({ showConfirmDeleteModal: false, itemToDelete: {} })
+          }
           title="Confirm"
           subTitle="Delete environment"
           message="Are you sure you want to delete this environment?"
@@ -255,9 +152,12 @@ class Environments extends Component {
 
         <SimpleModal
           showConfirmDeleteModal={this.state.showConfirmDuplicateModal}
-          handleConfirmDeleteModalClose={this.handleConfirmDuplicateModalClose.bind(
-            this
-          )}
+          handleConfirmDeleteModalClose={() =>
+            this.setState({
+              showConfirmDuplicateModal: false,
+              itemToDuplicate: {}
+            })
+          }
           title="Confirm"
           subTitle="Duplicate environment"
           message="Are you sure you want to duplicate this environment?"
@@ -277,7 +177,13 @@ class Environments extends Component {
                       }
                       className="pull-right"
                       variant="primary"
-                      onClick={this.handleNewEnvironmentClick.bind(this)}
+                      onClick={e =>
+                        this.setState({
+                          showInsertUpdateForm: true,
+                          editItem: {},
+                          editMode: false
+                        })
+                      }
                     >
                       New Environment
                     </CButton>
@@ -295,7 +201,13 @@ class Environments extends Component {
                   editMode={this.state.editMode}
                   editItem={this.state.editItem}
                   saveClick={this.onSaveClick.bind(this)}
-                  cancelClick={this.handleCancelEnvironmentClick.bind(this)}
+                  cancelClick={e =>
+                    this.setState({
+                      showInsertUpdateForm: false,
+                      editItem: {},
+                      editMode: false
+                    })
+                  }
                 />
               ) : null}
             </Col>
@@ -314,7 +226,9 @@ class Environments extends Component {
                           <ControlLabel>Environment Search</ControlLabel>
                           <FormControl
                             value={this.state.inputFilter}
-                            onChange={this.onChangeFilterHandler.bind(this)}
+                            onChange={e =>
+                              this.setState({ inputFilter: e.target.value })
+                            }
                             style={{ width: "100%" }}
                             type="text"
                             placeholder="Search using any field"
@@ -337,4 +251,10 @@ class Environments extends Component {
   }
 }
 
-export default Environments;
+const mapStateToProps = state => ({
+  loading: environmentSelectors.getLoading(state),
+  environments: environmentSelectors.getEnvironments(state),
+  error: environmentSelectors.getError(state)
+});
+
+export default connect(mapStateToProps)(Environments);

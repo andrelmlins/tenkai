@@ -32,6 +32,22 @@ export function createEnvironment(data) {
   };
 }
 
+export function duplicateEnvironment(environmentId) {
+  return async dispatch => {
+    try {
+      dispatch(types.duplicateEnvironmentBegin());
+
+      await services.duplicateEnvironment(environmentId);
+      const result = await services.allEnvironments();
+      let environments = result.data.Envs;
+
+      dispatch(types.duplicateEnvironmentSuccess(environments));
+    } catch (error) {
+      dispatch(types.duplicateEnvironmentError(error));
+    }
+  };
+}
+
 export function editEnvironment(data) {
   return async dispatch => {
     try {

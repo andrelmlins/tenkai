@@ -18,6 +18,7 @@ export default function reduce(state = initialState, action = {}) {
       };
 
     case types.DELETE_ENVIRONMENT_BEGIN:
+    case types.DUPLICATE_ENVIRONMENT_BEGIN:
       return {
         loadingDelete: true,
         ...state
@@ -32,9 +33,10 @@ export default function reduce(state = initialState, action = {}) {
       };
 
     case types.ALL_ENVIRONMENT_ERROR:
-    case types.DELETE_ENVIRONMENT_BEGIN:
-    case types.CREATE_ENVIRONMENT_BEGIN:
+    case types.DELETE_ENVIRONMENT_ERROR:
+    case types.CREATE_ENVIRONMENT_ERROR:
     case types.EDIT_ENVIRONMENT_ERROR:
+    case types.DUPLICATE_ENVIRONMENT_ERROR:
       return {
         ...state,
         loading: false,
@@ -47,6 +49,7 @@ export default function reduce(state = initialState, action = {}) {
     case types.DELETE_ENVIRONMENT_SUCCESS:
     case types.CREATE_ENVIRONMENT_SUCCESS:
     case types.EDIT_ENVIRONMENT_SUCCESS:
+    case types.DUPLICATE_ENVIRONMENT_SUCCESS:
       return {
         ...state,
         loading: false,
